@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: swasthya-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=swasthya_copilot
+    networks:
+      - swasthya-network
+
+  ocr-service:
+    build:
+      context: ./ocr-service
+      dockerfile: Dockerfile
+    container_name: swasthya-ocr-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - TESSERACT_PATH=/usr/bin/tesseract
+      - TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
+      - DEFAULT_LANGS=eng+hin+tel
+    networks:
+      - swasthya-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: swasthya-backend
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    depends_on:
+      - mongodb
+      - ocr-service
+    volumes:
+      - backend_uploads:/app/uploads
+    environment:
+      - PORT=5001
+      - NODE_ENV=production
+      - CLIENT_URL=http://localhost:5173
+      - MONGODB_URI=mongodb://mongodb:27017/swasthya_copilot
+      - OCR_SERVICE_URL=http://ocr-service:8000
+      - UPLOAD_DIR=/app/uploads
+      - JWT_SECRET=change-this-to-a-very-secure-jwt-secret-in-production-min-32-chars
+      - AI_PROVIDER=gemini
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=gemini-1.5-flash
+    networks:
+      - swasthya-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: swasthya-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - swasthya-network
+
+networks:
+  swasthya-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  backend_uploads:

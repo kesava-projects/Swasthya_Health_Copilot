@@ -1,0 +1,44 @@
+[
+  {
+    "id": "SYNTH_CBC_01",
+    "language": "eng",
+    "type": "lab_report",
+    "ground_truth_text": "HEMOGLOBIN: 14.2 g/dL\nPLATELET COUNT: 250000 /mcL\nWHITE BLOOD CELLS: 7200 /mcL\nFASTING BLOOD GLUCOSE: 95 mg/dL",
+    "ground_truth_fields": {
+      "medicine_name": null,
+      "dosage": null,
+      "decimal_points": ["14.2"],
+      "dates": [],
+      "units": ["g/dL", "/mcL", "mg/dL"],
+      "reference_ranges": []
+    }
+  },
+  {
+    "id": "SYNTH_RX_02",
+    "language": "eng+hin",
+    "type": "prescription",
+    "ground_truth_text": "Tab. Telmisartan 40 mg OD\nTab. Metformin 500 mg BD\nDate: 2024-04-12\nReview after 30 days",
+    "ground_truth_fields": {
+      "medicine_name": ["Telmisartan", "Metformin"],
+      "dosage": ["40 mg", "500 mg"],
+      "decimal_points": [],
+      "dates": ["2024-04-12"],
+      "units": ["mg"],
+      "reference_ranges": []
+    }
+  },
+  {
+    "id": "SYNTH_LIPID_03",
+    "language": "eng+tel",
+    "type": "lab_report",
+    "ground_truth_text": "TOTAL CHOLESTEROL: 185 mg/dL (Ref: 125 - 200)\nTRIGLYCERIDES: 140 mg/dL (Ref: < 150)\nHDL CHOLESTEROL: 45 mg/dL (Ref: > 40)\nDATE: 2024-05-18",
+    "ground_truth_fields": {
+      "medicine_name": null,
+      "dosage": null,
+      "decimal_points": [],
+      "dates": ["2024-05-18"],
+      "units": ["mg/dL"],
+      "reference_ranges": ["125 - 200", "< 150", "> 40"]
+    }
+  }
+]

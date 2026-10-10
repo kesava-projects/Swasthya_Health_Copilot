@@ -1,0 +1,78 @@
+# Render Blueprint Specification for Swasthya Copilot
+# Docs: https://render.com/docs/blueprint-spec
+version: "1"
+
+services:
+  # ============================================================================
+  # 1. Frontend Client (Render Static Site - Free Tier CDN)
+  # ============================================================================
+  - type: web
+    name: swasthya-copilot-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      # Single-Page Application (SPA) rewrite rule for client-side routing
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false # Set to your deployed backend URL: https://swasthya-copilot-backend.onrender.com/api
+
+  # ============================================================================
+  # 2. Backend API Service (Node.js Web Service)
+  # ============================================================================
+  - type: web
+    name: swasthya-copilot-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CLIENT_URL
+        sync: false # Set to your deployed frontend URL: https://swasthya-copilot-frontend.onrender.com
+      - key: MONGODB_URI
+        sync: false # Set to your MongoDB Atlas connection URI: mongodb+srv://...
+      - key: JWT_SECRET
+        generateValue: true # Render automatically generates a secure 32-character random key
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: AI_PROVIDER
+        value: gemini
+      - key: LLM_API_KEY
+        sync: false # Set to your Google Gemini API key
+      - key: LLM_MODEL
+        value: gemini-1.5-flash
+      - key: OCR_SERVICE_URL
+        sync: false # Optional: Set to https://swasthya-copilot-ocr.onrender.com (or leave empty for Gemini multimodal fallback)
+      - key: SERVE_FRONTEND
+        value: "false"
+
+  # ============================================================================
+  # 3. OCR Microservice (Docker Web Service - Multilingual Tesseract)
+  # ============================================================================
+  - type: web
+    name: swasthya-copilot-ocr
+    runtime: docker
+    rootDir: ocr-service
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: HOST
+        value: 0.0.0.0
+      - key: DEFAULT_LANGS
+        value: eng+hin+tel
+      - key: OCR_ENGINE
+        value: tesseract

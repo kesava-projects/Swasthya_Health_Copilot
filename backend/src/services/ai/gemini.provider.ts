@@ -169,10 +169,24 @@ ${JSON.stringify(EXTRACTION_SCHEMA_JSON, null, 2)}
     }
   }
 
+  private getLanguageName(lang: string): string {
+    const map: Record<string, string> = {
+      en: 'English',
+      te: 'Telugu (తెలుగు)',
+      hi: 'Hindi (हिंदी)',
+      ta: 'Tamil (தமிழ்)',
+      kn: 'Kannada (ಕನ್ನಡ)',
+      bn: 'Bengali (বাংলা)',
+      mr: 'Marathi (मराठी)',
+      es: 'Spanish (Español)',
+    };
+    return map[lang] || 'English';
+  }
+
   async generateDocumentSummary(
     ocrPages: IOcrPage[],
     structured: IStructuredData,
-    language: 'en' | 'te' | 'hi' = 'en'
+    language: string = 'en'
   ): Promise<SummaryResult> {
     if (!this.isConfigured()) {
       throw new Error(
@@ -180,7 +194,7 @@ ${JSON.stringify(EXTRACTION_SCHEMA_JSON, null, 2)}
       );
     }
 
-    const langName = language === 'te' ? 'Telugu' : language === 'hi' ? 'Hindi' : 'English';
+    const langName = this.getLanguageName(language);
     const pagesText = ocrPages
       .map((p) => `--- PAGE ${p.pageNumber} ---\n${p.text}`)
       .join('\n\n');
@@ -237,7 +251,7 @@ Return strictly valid JSON with this format:
 
   async generatePatientSummary(
     records: RetrievedMedicalRecord[],
-    language: 'en' | 'te' | 'hi' = 'en'
+    language: string = 'en'
   ): Promise<SummaryResult> {
     if (!this.isConfigured()) {
       throw new Error(
@@ -245,7 +259,7 @@ Return strictly valid JSON with this format:
       );
     }
 
-    const langName = language === 'te' ? 'Telugu' : language === 'hi' ? 'Hindi' : 'English';
+    const langName = this.getLanguageName(language);
     const context = records
       .map(
         (r) =>
@@ -302,7 +316,7 @@ Return strictly valid JSON matching this schema:
   async answerHealthQuery(
     question: string,
     contextRecords: RetrievedMedicalRecord[],
-    language: 'en' | 'te' | 'hi' = 'en'
+    language: string = 'en'
   ): Promise<ChatAnswerResult> {
     if (!this.isConfigured()) {
       throw new Error(
@@ -310,7 +324,7 @@ Return strictly valid JSON matching this schema:
       );
     }
 
-    const langName = language === 'te' ? 'Telugu' : language === 'hi' ? 'Hindi' : 'English';
+    const langName = this.getLanguageName(language);
     const contextText = contextRecords.length > 0
       ? contextRecords
           .map(

@@ -12,7 +12,7 @@ import { RetrievedMedicalRecord } from '../../services/ai/ai.interface.js';
 export async function getDocumentSummary(req: AuthenticatedRequest, res: Response): Promise<void> {
   const userId = req.user!.userId;
   const { documentId } = req.params;
-  const language = (req.query.language as 'en' | 'te' | 'hi') || 'en';
+  const language = (req.query.language as string) || 'en';
 
   let summary = await SummaryModel.findOne({ documentId, userId, language });
   if (!summary && language !== 'en') {
@@ -63,7 +63,7 @@ export async function getDocumentSummary(req: AuthenticatedRequest, res: Respons
 export async function generateDocumentSummary(req: AuthenticatedRequest, res: Response): Promise<void> {
   const userId = req.user!.userId;
   const { documentId } = req.params;
-  const language = (req.body.language as 'en' | 'te' | 'hi') || 'en';
+  const language = (req.body.language as string) || 'en';
 
   const doc = await DocumentModel.findOne({ _id: documentId, userId });
   if (!doc) {
@@ -110,7 +110,7 @@ export async function generateDocumentSummary(req: AuthenticatedRequest, res: Re
 
 export async function buildAndSavePatientOverallSummary(
   userId: string,
-  language: 'en' | 'te' | 'hi' = 'en'
+  language: string = 'en'
 ): Promise<any> {
   const [obs, meds, conds] = await Promise.all([
     ObservationModel.find({ userId }).populate('sourceDocumentId', 'originalName'),
@@ -184,7 +184,7 @@ export async function buildAndSavePatientOverallSummary(
 
 export async function getPatientOverallSummary(req: AuthenticatedRequest, res: Response): Promise<void> {
   const userId = req.user!.userId;
-  const language = (req.query.language as 'en' | 'te' | 'hi') || 'en';
+  const language = (req.query.language as string) || 'en';
 
   let summary = await SummaryModel.findOne({ userId, summaryType: 'patient_overall', language }).sort({ updatedAt: -1 });
   if (!summary) {

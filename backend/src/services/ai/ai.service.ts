@@ -1,6 +1,6 @@
 import { env } from '../../config/env.js';
 import { logger } from '../../utils/logger.js';
-import { IAIProvider, RetrievedMedicalRecord, ChatAnswerResult, SummaryResult } from './ai.interface.js';
+import { IAIProvider, RetrievedMedicalRecord, ChatAnswerResult, SummaryResult, SupportedLanguage } from './ai.interface.js';
 import { GeminiProvider } from './gemini.provider.js';
 import { IOcrPage, IStructuredData } from '../../modules/extractions/extraction.model.js';
 
@@ -195,10 +195,24 @@ export class AIServiceManager {
     };
   }
 
+  private getLanguageName(lang: SupportedLanguage): string {
+    const map: Record<string, string> = {
+      en: 'English',
+      te: 'తెలుగు',
+      hi: 'हिंदी',
+      ta: 'தமிழ்',
+      kn: 'ಕನ್ನಡ',
+      bn: 'বাংলা',
+      mr: 'मराठी',
+      es: 'Español',
+    };
+    return map[lang] || 'English';
+  }
+
   async generateDocumentSummary(
     ocrPages: IOcrPage[],
     structured: IStructuredData,
-    language: 'en' | 'te' | 'hi' = 'en'
+    language: SupportedLanguage = 'en'
   ): Promise<SummaryResult> {
     if (this.isConfigured()) {
       try {
@@ -217,11 +231,12 @@ export class AIServiceManager {
   private generateFallbackDocumentSummary(
     _ocrPages: IOcrPage[],
     structured: IStructuredData,
-    language: 'en' | 'te' | 'hi' = 'en'
+    language: SupportedLanguage = 'en'
   ): SummaryResult {
     const abnormal = structured.observations.filter((o) => o.isAbnormal);
+    const langLabel = this.getLanguageName(language);
     return {
-      title: `Medical Summary (${language === 'te' ? 'తెలుగు' : language === 'hi' ? 'हिंदी' : 'English'})`,
+      title: `Medical Summary (${langLabel})`,
       keyFindings: [
         `Identified ${structured.observations.length} laboratory test observation(s).`,
         `Identified ${structured.medications.length} medication entry/entries.`,
@@ -248,7 +263,7 @@ export class AIServiceManager {
 
   async generatePatientSummary(
     records: RetrievedMedicalRecord[],
-    language: 'en' | 'te' | 'hi' = 'en'
+    language: SupportedLanguage = 'en'
   ): Promise<SummaryResult> {
     if (this.isConfigured()) {
       try {
@@ -266,9 +281,9 @@ export class AIServiceManager {
 
   private generateFallbackPatientSummary(
     records: RetrievedMedicalRecord[],
-    language: 'en' | 'te' | 'hi' = 'en'
+    language: SupportedLanguage = 'en'
   ): SummaryResult {
-    const langName = language === 'te' ? 'తెలుగు' : language === 'hi' ? 'हिंदी' : 'English';
+    const langName = this.getLanguageName(language);
     const observations = records.filter((r) => r.recordType === 'observation');
     const medications = records.filter((r) => r.recordType === 'medication');
     const conditions = records.filter((r) => r.recordType === 'condition');
@@ -349,7 +364,7 @@ export class AIServiceManager {
   async answerHealthQuery(
     question: string,
     contextRecords: RetrievedMedicalRecord[],
-    language: 'en' | 'te' | 'hi' = 'en'
+    language: SupportedLanguage = 'en'
   ): Promise<ChatAnswerResult> {
     if (this.isConfigured()) {
       try {
@@ -368,7 +383,7 @@ export class AIServiceManager {
   private generateFallbackChatAnswer(
     _question: string,
     contextRecords: RetrievedMedicalRecord[],
-    language: 'en' | 'te' | 'hi' = 'en'
+    language: SupportedLanguage = 'en'
   ): ChatAnswerResult {
     if (contextRecords.length === 0) {
       return {

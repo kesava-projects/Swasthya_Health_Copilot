@@ -73,6 +73,8 @@ export async function getObservationTrends(req: AuthenticatedRequest, res: Respo
       latestValue: latest.value,
       latestInterpretation: latest.interpretation,
       referenceRange: latest.referenceRange,
+      refLow: latest.refLow,
+      refHigh: latest.refHigh,
       dataPoints,
     };
   });

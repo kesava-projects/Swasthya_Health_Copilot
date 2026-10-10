@@ -14,7 +14,7 @@ export interface IUser extends Document {
     relationship: string;
     phone: string;
   };
-  preferredLanguage: 'en' | 'te' | 'hi';
+  preferredLanguage: 'en' | 'te' | 'hi' | 'ta' | 'kn' | 'bn' | 'mr' | 'es';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,7 +38,11 @@ const userSchema = new Schema<IUser>(
       relationship: { type: String },
       phone: { type: String },
     },
-    preferredLanguage: { type: String, enum: ['en', 'te', 'hi'], default: 'en' },
+    preferredLanguage: {
+      type: String,
+      enum: ['en', 'te', 'hi', 'ta', 'kn', 'bn', 'mr', 'es'],
+      default: 'en'
+    },
   },
   { timestamps: true }
 );

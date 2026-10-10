@@ -145,9 +145,14 @@ export const RegisterPage: React.FC = () => {
                   onChange={(e) => setPreferredLanguage(e.target.value as any)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white outline-none"
                 >
-                  <option value="en">English</option>
-                  <option value="te">తెలుగు</option>
-                  <option value="hi">हिंदी</option>
+                  <option value="en">English (🇬🇧)</option>
+                  <option value="hi">हिन्दी (Hindi 🇮🇳)</option>
+                  <option value="te">తెలుగు (Telugu 🇮🇳)</option>
+                  <option value="ta">தமிழ் (Tamil 🇮🇳)</option>
+                  <option value="kn">ಕನ್ನಡ (Kannada 🇮🇳)</option>
+                  <option value="bn">বাংলা (Bengali 🇮🇳)</option>
+                  <option value="mr">मराठी (Marathi 🇮🇳)</option>
+                  <option value="es">Español (Spanish 🇪🇸)</option>
                 </select>
               </div>
             </div>

@@ -69,23 +69,31 @@ export const SettingsPage: React.FC = () => {
             Select your preferred language. AI explanations and chatbot summaries will adapt while preserving original medical measurements, units, and medicine names.
           </p>
 
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {[
-              { code: 'en', name: 'English', desc: 'Standard English' },
-              { code: 'te', name: 'తెలుగు (Telugu)', desc: 'తెలుగు అనువాదాలు మరియు వివరణలు' },
-              { code: 'hi', name: 'हिंदी (Hindi)', desc: 'हिंदी अनुवाद और व्याख्याएं' },
+              { code: 'en', name: 'English', desc: 'Standard English', flag: '🇬🇧' },
+              { code: 'hi', name: 'हिन्दी (Hindi)', desc: 'हिंदी अनुवाद और व्याख्याएं', flag: '🇮🇳' },
+              { code: 'te', name: 'తెలుగు (Telugu)', desc: 'తెలుగు అనువాదాలు మరియు వివరణలు', flag: '🇮🇳' },
+              { code: 'ta', name: 'தமிழ் (Tamil)', desc: 'தமிழ் மொழிபெயர்ப்புகள்', flag: '🇮🇳' },
+              { code: 'kn', name: 'ಕನ್ನಡ (Kannada)', desc: 'ಕನ್ನಡ ಅನುವಾದಗಳು ಮತ್ತು ವಿವರಣೆಗಳು', flag: '🇮🇳' },
+              { code: 'bn', name: 'বাংলা (Bengali)', desc: 'বাংলা অনুবাদ ও ব্যাখ্যা', flag: '🇮🇳' },
+              { code: 'mr', name: 'मराठी (Marathi)', desc: 'मराठी भाषांतर आणि स्पष्टीकरण', flag: '🇮🇳' },
+              { code: 'es', name: 'Español (Spanish)', desc: 'Traducciones y resúmenes clínicos', flag: '🇪🇸' },
             ].map((lang) => (
               <label
                 key={lang.code}
-                className={`p-3 rounded-lg border flex items-center justify-between cursor-pointer transition-colors text-xs ${
+                className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all text-xs ${
                   language === lang.code
-                    ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900 font-semibold'
+                    ? 'border-emerald-500 bg-emerald-50/70 text-emerald-950 font-bold shadow-2xs'
                     : 'border-slate-200 hover:bg-slate-50 text-slate-700'
                 }`}
               >
-                <div>
-                  <p>{lang.name}</p>
-                  <p className="text-[11px] text-slate-400 font-normal">{lang.desc}</p>
+                <div className="flex items-center gap-2.5">
+                  <span className="text-lg">{lang.flag}</span>
+                  <div>
+                    <p className="font-bold leading-tight">{lang.name}</p>
+                    <p className="text-[10px] text-slate-400 font-normal leading-tight">{lang.desc}</p>
+                  </div>
                 </div>
                 <input
                   type="radio"
@@ -93,7 +101,7 @@ export const SettingsPage: React.FC = () => {
                   value={lang.code}
                   checked={language === lang.code}
                   onChange={() => setLanguage(lang.code as Language)}
-                  className="text-emerald-600"
+                  className="text-emerald-600 focus:ring-emerald-500"
                 />
               </label>
             ))}

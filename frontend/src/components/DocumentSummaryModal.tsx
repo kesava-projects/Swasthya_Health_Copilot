@@ -18,6 +18,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { DocumentSummary, Language } from '../types/index.js';
+import { SUPPORTED_LANGUAGES } from '../utils/i18n.js';
 
 interface DocumentSummaryModalProps {
   documentId: string | null;
@@ -150,9 +151,11 @@ export const DocumentSummaryModal: React.FC<DocumentSummaryModalProps> = ({
                 onChange={(e) => setSelectedLang(e.target.value as Language)}
                 className="bg-transparent text-slate-700 font-medium outline-none cursor-pointer text-xs"
               >
-                <option value="en">English (EN)</option>
-                <option value="te">తెలుగు (TE)</option>
-                <option value="hi">हिंदी (HI)</option>
+                {SUPPORTED_LANGUAGES.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.flag} {lang.nativeName} ({lang.code.toUpperCase()})
+                  </option>
+                ))}
               </select>
             </div>
 

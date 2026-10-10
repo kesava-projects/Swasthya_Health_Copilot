@@ -1,4 +1,4 @@
-export type Language = 'en' | 'te' | 'hi';
+export type Language = 'en' | 'te' | 'hi' | 'ta' | 'kn' | 'bn' | 'mr' | 'es';
 
 export interface User {
   id: string;
@@ -158,6 +158,8 @@ export interface ObservationTrend {
   latestValue: number;
   latestInterpretation: string;
   referenceRange?: string;
+  refLow?: number;
+  refHigh?: number;
   dataPoints: TrendPoint[];
 }
 

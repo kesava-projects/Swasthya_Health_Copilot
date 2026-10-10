@@ -4,7 +4,7 @@ export interface ISummary extends MongooseDoc {
   userId: Types.ObjectId;
   documentId?: Types.ObjectId; // null for overall patient summary
   summaryType: 'document' | 'patient_overall';
-  language: 'en' | 'te' | 'hi';
+  language: 'en' | 'te' | 'hi' | 'ta' | 'kn' | 'bn' | 'mr' | 'es' | string;
   title: string;
   keyFindings: string[];
   abnormalValues: {
@@ -28,7 +28,7 @@ const summarySchema = new Schema<ISummary>(
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     documentId: { type: Schema.Types.ObjectId, ref: 'Document', index: true },
     summaryType: { type: String, enum: ['document', 'patient_overall'], required: true },
-    language: { type: String, enum: ['en', 'te', 'hi'], default: 'en' },
+    language: { type: String, enum: ['en', 'te', 'hi', 'ta', 'kn', 'bn', 'mr', 'es'], default: 'en' },
     title: { type: String, required: true },
     keyFindings: { type: [String], default: [] },
     abnormalValues: [

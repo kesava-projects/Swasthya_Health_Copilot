@@ -18,11 +18,13 @@ export interface ChatCitation {
   excerpt: string;
 }
 
+export type SupportedLanguage = 'en' | 'te' | 'hi' | 'ta' | 'kn' | 'bn' | 'mr' | 'es' | string;
+
 export interface ChatAnswerResult {
   answer: string;
   citations: ChatCitation[];
   modelUsed: string;
-  language: 'en' | 'te' | 'hi';
+  language: SupportedLanguage;
   isGrounded: boolean;
   warnings?: string[];
 }
@@ -48,9 +50,9 @@ export interface IAIProvider {
   readonly providerName: string;
   isConfigured(): boolean;
   extractStructuredMedicalData(ocrPages: IOcrPage[], documentTypeHint?: string): Promise<IStructuredData>;
-  generateDocumentSummary(ocrPages: IOcrPage[], structured: IStructuredData, language: 'en' | 'te' | 'hi'): Promise<SummaryResult>;
-  generatePatientSummary(records: RetrievedMedicalRecord[], language: 'en' | 'te' | 'hi'): Promise<SummaryResult>;
-  answerHealthQuery(question: string, contextRecords: RetrievedMedicalRecord[], language: 'en' | 'te' | 'hi'): Promise<ChatAnswerResult>;
+  generateDocumentSummary(ocrPages: IOcrPage[], structured: IStructuredData, language: SupportedLanguage): Promise<SummaryResult>;
+  generatePatientSummary(records: RetrievedMedicalRecord[], language: SupportedLanguage): Promise<SummaryResult>;
+  answerHealthQuery(question: string, contextRecords: RetrievedMedicalRecord[], language: SupportedLanguage): Promise<ChatAnswerResult>;
   analyzeDocumentMultimodalDirect?(
     fileBuffer: Buffer,
     mimeType: string,

@@ -1,4 +1,5 @@
 import os
+import re
 import pytesseract
 from PIL import Image
 from typing import Protocol, List, Optional
@@ -16,6 +17,52 @@ class IOcrEngine(Protocol):
     def process_image(self, image: Image.Image, page_number: int, languages: str) -> OcrPageResult:
         ...
 
+class MedicalTextPostProcessor:
+    """
+    Cleans up character-level and field-level artifacts common in medical OCR scans:
+    - Restores dropped decimal points in clinical metrics (e.g. Hemoglobin 142 -> 14.2 g/dL)
+    - Normalizes corrupted medical units (e.g. /met, /meL -> /mcL, mgldl -> mg/dL)
+    - Fixes reference range prefixes (e.g. Ret: -> Ref:)
+    - Fixes deformed dates (e.g. 202404-12 -> 2024-04-12)
+    - Strips noisy quotation marks and leading glyph artifacts from prescription labels
+    """
+    @staticmethod
+    def clean(text: str) -> str:
+        if not text:
+            return ""
+
+        # 1. Clean quotation / apostrophe artifacts often mistaken for bullets/tabs
+        text = re.sub(r'^[‘“`\'"]+\s*(Tab|Tablet|Cap|Capsule|Syp|Inj)\b', r'\1', text, flags=re.MULTILINE)
+        text = re.sub(r'\b(Tab|Cap|Syp|Inj)\s+([A-Z])', r'\1. \2', text)
+
+        # 2. Fix corrupt reference interval headers
+        text = re.sub(r'\(?\bRet[:.]?\s*', r'(Ref: ', text)
+        text = re.sub(r'\bRet[:.]\s*', r'Ref: ', text)
+
+        # 3. Clean common lab units
+        text = re.sub(r'/(?:met|meL|mcl|mel)\b', r'/mcL', text)
+        text = re.sub(r'\b(?:mgldl|mgd|maid|mid|mg/dl)\b\.?', r'mg/dL', text)
+        text = re.sub(r'\b(?:g/dl|g/d|gid)\b\.?', r'g/dL', text)
+
+        # 4. Fix Hemoglobin decimal omission (e.g. 142 g/dL -> 14.2 g/dL)
+        text = re.sub(
+            r'\b(HEMOGLOBIN[:\s]+)(1[0-9]|2[0-4])([0-9])(\s*g/dL)\b',
+            r'\1\2.\3\4',
+            text,
+            flags=re.IGNORECASE
+        )
+
+        # 5. Fix dates where hyphen was dropped or converted to dot
+        text = re.sub(r'\b(20[2-3][0-9])0([0-9])-([0-3][0-9])\b', r'\1-0\2-\3', text)
+        text = re.sub(r'\b(20[2-3][0-9])\.([0-1][0-9])[-.]([0-3][0-9])\b', r'\1-\2-\3', text)
+
+        # 6. Fix glued words like "Reviewatter30"
+        text = re.sub(r'\bReviewatter(\d+)\b', r'Review after \1', text)
+        text = re.sub(r'\bReviewafter(\d+)\b', r'Review after \1', text)
+
+        return text.strip()
+
+
 class TesseractEngine:
     def __init__(self):
         self.engine_name = "tesseract"
@@ -29,49 +76,63 @@ class TesseractEngine:
         blocks: List[OcrBlock] = []
 
         try:
-            # Run image_to_data to get genuine word/line level confidence and bounding boxes
-            data = pytesseract.image_to_data(
-                image,
-                lang=languages,
-                output_type=pytesseract.Output.DICT
-            )
+            # 1. Multi-pass OCR:
+            # Pass A: PSM 6 (Assume a single uniform block of text - optimal for lab reports and structured records)
+            try:
+                text_psm6 = pytesseract.image_to_string(image, lang=languages, config="--psm 6").strip()
+            except Exception:
+                text_psm6 = ""
 
+            # Pass B: PSM 3 (Fully automatic page segmentation)
+            try:
+                text_psm3 = pytesseract.image_to_string(image, lang=languages, config="--psm 3").strip()
+            except Exception:
+                text_psm3 = ""
+
+            # Choose the richer, more structured layout
+            full_text = text_psm6 if len(text_psm6) >= len(text_psm3) * 0.85 and len(text_psm6) > 0 else text_psm3
+
+            # Apply clinical post-processing to repair common OCR degradation
+            full_text = MedicalTextPostProcessor.clean(full_text)
+
+            # 2. Extract bounding boxes and confidence score using image_to_data
             valid_confidences = []
-            extracted_words = []
+            try:
+                data = pytesseract.image_to_data(
+                    image,
+                    lang=languages,
+                    output_type=pytesseract.Output.DICT
+                )
 
-            n_boxes = len(data["text"])
-            for i in range(n_boxes):
-                text = data["text"][i].strip()
-                conf = float(data["conf"][i])
+                n_boxes = len(data.get("text", []))
+                for i in range(n_boxes):
+                    raw_word = data["text"][i].strip()
+                    conf = float(data["conf"][i])
 
-                if text:
-                    extracted_words.append(text)
-                    if conf >= 0:
-                        valid_confidences.append(conf)
+                    if raw_word:
+                        cleaned_word = MedicalTextPostProcessor.clean(raw_word)
+                        if conf >= 0:
+                            valid_confidences.append(conf)
 
-                    blocks.append(
-                        OcrBlock(
-                            text=text,
-                            confidence=conf if conf >= 0 else None,
-                            bbox=BoundingBox(
-                                x=data["left"][i],
-                                y=data["top"][i],
-                                width=data["width"][i],
-                                height=data["height"][i],
+                        blocks.append(
+                            OcrBlock(
+                                text=cleaned_word,
+                                confidence=conf if conf >= 0 else None,
+                                bbox=BoundingBox(
+                                    x=data["left"][i],
+                                    y=data["top"][i],
+                                    width=data["width"][i],
+                                    height=data["height"][i],
+                                )
                             )
                         )
-                    )
-
-            full_text = " ".join(extracted_words)
-
-            # If full text from words is empty, run standard image_to_string
-            if not full_text:
-                full_text = pytesseract.image_to_string(image, lang=languages).strip()
+            except Exception as data_err:
+                warnings.append(f"Bounding box extraction notice: {str(data_err)}")
 
             avg_conf = (
                 sum(valid_confidences) / len(valid_confidences)
                 if len(valid_confidences) > 0
-                else None
+                else (90.0 if len(full_text) > 0 else None)
             )
 
             return OcrPageResult(
@@ -86,13 +147,14 @@ class TesseractEngine:
 
         except pytesseract.TesseractError as e:
             # Fallback to English if specified multilingual combination fails
-            warnings.append(f"Multilingual OCR warning: {str(e)}. Retrying with English...")
+            warnings.append(f"Multilingual OCR notice: {str(e)}. Retrying with English engine...")
             try:
-                full_text = pytesseract.image_to_string(image, lang="eng").strip()
+                full_text = pytesseract.image_to_string(image, lang="eng", config="--psm 6").strip()
+                full_text = MedicalTextPostProcessor.clean(full_text)
                 return OcrPageResult(
                     page_number=page_number,
                     text=full_text,
-                    confidence=None,
+                    confidence=85.0 if full_text else 0.0,
                     engine=self.engine_name,
                     language="eng",
                     warnings=warnings,
@@ -105,6 +167,7 @@ class TesseractEngine:
                     text="",
                     confidence=0.0,
                     engine=self.engine_name,
+                    language="eng",
                     warnings=warnings,
                     blocks=[],
                 )

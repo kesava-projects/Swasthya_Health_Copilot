@@ -7,7 +7,7 @@ export const registerSchema = z.object({
   dateOfBirth: z.string().optional(),
   gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say']).optional(),
   bloodGroup: z.string().optional(),
-  preferredLanguage: z.enum(['en', 'te', 'hi']).default('en'),
+  preferredLanguage: z.enum(['en', 'te', 'hi', 'ta', 'kn', 'bn', 'mr', 'es']).default('en'),
 });
 
 export const loginSchema = z.object({
@@ -28,5 +28,5 @@ export const updateProfileSchema = z.object({
       phone: z.string(),
     })
     .optional(),
-  preferredLanguage: z.enum(['en', 'te', 'hi']).optional(),
+  preferredLanguage: z.enum(['en', 'te', 'hi', 'ta', 'kn', 'bn', 'mr', 'es']).optional(),
 });

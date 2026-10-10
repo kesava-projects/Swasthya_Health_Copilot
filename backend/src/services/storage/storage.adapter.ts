@@ -101,9 +101,9 @@ export class MongoGridFSStorageAdapter implements IStorageAdapter {
     });
 
     await new Promise<void>((resolve, reject) => {
-      uploadStream.on('error', reject);
-      uploadStream.on('finish', () => resolve());
-      uploadStream.end(buffer);
+      (uploadStream as any).on('error', reject);
+      (uploadStream as any).on('finish', () => resolve());
+      (uploadStream as any).end(buffer);
     });
 
     logger.info(`Securely saved document ${storedFilename} (${buffer.length} bytes) to MongoDB GridFS`);
@@ -148,10 +148,10 @@ export class MongoGridFSStorageAdapter implements IStorageAdapter {
     const downloadStream = await this.getFileStream(storedFilename);
     return new Promise((resolve, reject) => {
       const chunks: Buffer[] = [];
-      downloadStream.on('data', (chunk) => {
+      downloadStream.on('data', (chunk: any) => {
         chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
       });
-      downloadStream.on('error', (err) => reject(err));
+      downloadStream.on('error', (err: any) => reject(err));
       downloadStream.on('end', () => resolve(Buffer.concat(chunks)));
     });
   }

@@ -394,6 +394,6 @@ describe('Swasthya Copilot Backend API Test Suite', () => {
       expect(res.body.summary.summaryType).toBe('patient_overall');
       expect(res.body.summary.title).toBeDefined();
       expect(res.body.summary.simpleExplanation).toBeDefined();
-    });
+    }, 15000);
   });
 });

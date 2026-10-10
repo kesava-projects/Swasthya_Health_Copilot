@@ -28,14 +28,23 @@ const envSchema = z.object({
   OPENROUTER_MODEL: z.string().default('google/gemini-flash-1.5'),
 });
 
-const parsed = envSchema.safeParse(process.env);
+export type Env = z.infer<typeof envSchema>;
 
-if (!parsed.success) {
-  logger.error('Invalid environment variables:', { errors: parsed.error.format() });
+let envConfig: Env;
+
+try {
+  envConfig = envSchema.parse(process.env);
+} catch (error) {
+  if (error instanceof z.ZodError) {
+    logger.error('Invalid environment variables:', { errors: error.format() });
+  } else {
+    logger.error('Invalid environment variables:', { error });
+  }
   process.exit(1);
+  throw error;
 }
 
-export const env = parsed.data;
+export const env: Env = envConfig;
 
 if (!env.LLM_API_KEY) {
   logger.warn('⚠️  LLM_API_KEY is not configured! Swasthya Copilot will run in DEMO / CONFIG-CHECK mode. Real LLM extraction and RAG will request an API key.');

@@ -4,6 +4,8 @@ import { logAuditEvent } from '../modules/audit/audit.service.js';
 
 export interface AuthenticatedRequest extends Request {
   user?: TokenPayload;
+  file?: Express.Multer.File;
+  files?: Express.Multer.File[] | { [fieldname: string]: Express.Multer.File[] };
 }
 
 export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction): void {

@@ -72,7 +72,7 @@ If you prefer to configure each service manually in the Render dashboard:
    - **Region**: Choose the region closest to your users (e.g., Singapore, Frankfurt, Oregon).
    - **Root Directory**: `backend`
    - **Runtime**: `Node`
-   - **Build Command**: `npm install && npm run build`
+   - **Build Command**: `npm install --include=dev && npm run build`
    - **Start Command**: `npm start`
    - **Instance Type**: `Free`
 4. Expand **Advanced** and set **Health Check Path** to:
@@ -103,7 +103,7 @@ If you prefer to configure each service manually in the Render dashboard:
 3. Configure the static site:
    - **Name**: `swasthya-copilot-frontend`
    - **Root Directory**: `frontend`
-   - **Build Command**: `npm install && npm run build`
+   - **Build Command**: `npm install --include=dev && npm run build`
    - **Publish Directory**: `dist`
 4. Under **Redirects/Rewrites**, add:
    - **Type**: `Rewrite`
@@ -154,7 +154,7 @@ If you wish to deploy the entire application under a **single Render Free Web Se
 3. **Runtime**: `Node`
 4. **Build Command**:
    ```bash
-   npm --prefix backend install && npm --prefix backend run build && npm --prefix frontend install && npm --prefix frontend run build
+   npm --prefix backend install --include=dev && npm --prefix backend run build && npm --prefix frontend install --include=dev && npm --prefix frontend run build
    ```
 5. **Start Command**:
    ```bash

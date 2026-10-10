@@ -18,7 +18,7 @@ const upload = multer({
   limits: {
     fileSize: 15 * 1024 * 1024, // 15MB max file size
   },
-  fileFilter: (_req, file, cb) => {
+  fileFilter: (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     const allowed = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
     if (allowed.includes(file.mimetype.toLowerCase())) {
       cb(null, true);

@@ -174,10 +174,17 @@ export async function downloadDocument(req: AuthenticatedRequest, res: Response)
 
   try {
     const fileStream = await storageService.getFileStream(doc.storedFilename);
-    res.setHeader('Content-Type', doc.mimeType);
+    const mimeType = doc.mimeType || 'application/octet-stream';
+    res.setHeader('Content-Type', mimeType);
     const disposition = isAttachment ? 'attachment' : 'inline';
     res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(doc.originalName)}"`);
     res.setHeader('Cache-Control', 'private, max-age=3600');
+    fileStream.on('error', (streamErr) => {
+      logger.error('Error streaming document file:', { streamErr });
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: 'Failed to read document stream' });
+      }
+    });
     fileStream.pipe(res);
   } catch (error: any) {
     res.status(404).json({ success: false, error: error.message });

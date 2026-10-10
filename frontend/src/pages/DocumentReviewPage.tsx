@@ -23,6 +23,12 @@ import {
   MessageSquare,
   Info,
   HelpCircle,
+  Download,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  AlertCircle,
+  FileImage,
 } from 'lucide-react';
 import { Extraction, ExtractedObservation, ExtractedMedication, ExtractedCondition, Language } from '../types/index.js';
 import { DocumentPreviewModal } from '../components/DocumentPreviewModal.js';
@@ -30,7 +36,7 @@ import { DocumentPreviewModal } from '../components/DocumentPreviewModal.js';
 export const DocumentReviewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { language, token } = useAuth();
+  const { language } = useAuth();
   const t = getT(language);
 
   const [document, setDocument] = useState<any>(null);
@@ -42,12 +48,97 @@ export const DocumentReviewPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  // Document Stream & Blob Preview State
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loadingBlob, setLoadingBlob] = useState<boolean>(true);
+  const [blobError, setBlobError] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<number>(1);
+  const [rotation, setRotation] = useState<number>(0);
+
   // AI Summary State
   const [summary, setSummary] = useState<any | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [generatingSummary, setGeneratingSummary] = useState(false);
   const [summaryLang, setSummaryLang] = useState<Language>(language);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+
+  const fetchDocumentBlob = async () => {
+    if (!id) return;
+    try {
+      setLoadingBlob(true);
+      setBlobError(null);
+      const res = await api.get(`/documents/${id}/preview`, {
+        responseType: 'blob',
+      });
+      const contentType =
+        (typeof res.headers['content-type'] === 'string' && res.headers['content-type']) ||
+        document?.mimeType ||
+        'application/octet-stream';
+      const url = URL.createObjectURL(new Blob([res.data], { type: contentType }));
+      setBlobUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return url;
+      });
+    } catch (err: any) {
+      console.error('Failed to load document preview blob:', err);
+      setBlobError(
+        err.response?.data?.error ||
+          'Unable to display document preview. You can view in fullscreen or download.'
+      );
+    } finally {
+      setLoadingBlob(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDocumentBlob();
+    return () => {
+      setBlobUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    };
+  }, [id]);
+
+  const handleZoomIn = () => setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)));
+  const handleZoomOut = () => setZoom((z) => Math.max(0.4, +(z - 0.25).toFixed(2)));
+  const handleResetZoom = () => {
+    setZoom(1);
+    setRotation(0);
+  };
+  const handleRotate = () => setRotation((r) => (r + 90) % 360);
+
+  const handleDownload = () => {
+    if (blobUrl) {
+      const link = window.document.createElement('a');
+      link.href = blobUrl;
+      link.setAttribute('download', document?.originalName || 'medical_document');
+      window.document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } else {
+      api.get(`/documents/${id}/download`, { responseType: 'blob' })
+        .then((res) => {
+          const url = URL.createObjectURL(new Blob([res.data]));
+          const link = window.document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', document?.originalName || 'medical_document');
+          window.document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        })
+        .catch(() => alert('Failed to download document'));
+    }
+  };
+
+  const handleOpenInNewTab = () => {
+    if (blobUrl) {
+      window.open(blobUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      setIsPreviewOpen(true);
+    }
+  };
 
   const fetchSummary = async (lang: Language = summaryLang) => {
     try {
@@ -187,6 +278,9 @@ export const DocumentReviewPage: React.FC = () => {
   const structured = extraction.structuredData;
   const pages = extraction.pages || [];
   const currentPageData = pages.find((p) => p.pageNumber === activePage) || pages[0];
+  const mime = (document?.mimeType || '').toLowerCase();
+  const name = (document?.originalName || '').toLowerCase();
+  const isImage = mime.startsWith('image/') || /\.(png|jpe?g|webp|bmp|gif|svg)$/i.test(name);
 
   return (
     <div className="space-y-4">
@@ -261,16 +355,54 @@ export const DocumentReviewPage: React.FC = () => {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[700px]">
           <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
             <span className="font-semibold text-slate-700 flex items-center gap-1.5">
-              <FileText className="w-4 h-4 text-emerald-600" />
+              {isImage ? <FileImage className="w-4 h-4 text-emerald-600" /> : <FileText className="w-4 h-4 text-emerald-600" />}
               {t.review.originalDoc}
             </span>
 
-            {/* Page Navigation */}
-            <div className="flex items-center gap-2">
+            {/* Page Navigation & Image Controls */}
+            <div className="flex items-center gap-1.5">
+              {isImage && blobUrl && (
+                <div className="hidden sm:flex items-center bg-white border border-slate-200 rounded-md p-0.5 shadow-2xs mr-1">
+                  <button
+                    onClick={handleZoomOut}
+                    title="Zoom Out"
+                    disabled={zoom <= 0.4}
+                    className="p-1 text-slate-600 hover:text-slate-900 rounded hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
+                  >
+                    <ZoomOut className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-[10px] font-mono px-1 text-slate-600 min-w-[36px] text-center">
+                    {Math.round(zoom * 100)}%
+                  </span>
+                  <button
+                    onClick={handleZoomIn}
+                    title="Zoom In"
+                    disabled={zoom >= 3}
+                    className="p-1 text-slate-600 hover:text-slate-900 rounded hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
+                  >
+                    <ZoomIn className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={handleRotate}
+                    title="Rotate 90° Clockwise"
+                    className="p-1 text-slate-600 hover:text-slate-900 rounded hover:bg-slate-100 border-l border-slate-200 ml-0.5 cursor-pointer"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={handleResetZoom}
+                    title="Reset Zoom & Rotation"
+                    className="px-1.5 py-0.5 text-[10px] font-medium text-slate-500 hover:text-slate-800 rounded hover:bg-slate-100 cursor-pointer"
+                  >
+                    Reset
+                  </button>
+                </div>
+              )}
+
               <button
                 disabled={activePage <= 1}
                 onClick={() => setActivePage((p) => Math.max(1, p - 1))}
-                className="p-1 rounded hover:bg-slate-200 disabled:opacity-30"
+                className="p-1 rounded hover:bg-slate-200 disabled:opacity-30 cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -280,62 +412,99 @@ export const DocumentReviewPage: React.FC = () => {
               <button
                 disabled={activePage >= (document.pageCount || 1)}
                 onClick={() => setActivePage((p) => Math.min(document.pageCount || 1, p + 1))}
-                className="p-1 rounded hover:bg-slate-200 disabled:opacity-30"
+                className="p-1 rounded hover:bg-slate-200 disabled:opacity-30 cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setIsPreviewOpen(true)}
-                className="p-1 rounded text-slate-600 hover:text-emerald-700 hover:bg-slate-200 transition-colors"
+                className="p-1 rounded text-slate-600 hover:text-emerald-700 hover:bg-slate-200 transition-colors cursor-pointer"
                 title="Open Fullscreen Preview"
               >
                 <Maximize2 className="w-3.5 h-3.5" />
               </button>
-              <a
-                href={`/api/documents/${id}/download${token ? `?token=${encodeURIComponent(token)}` : ''}`}
-                target="_blank"
-                rel="noreferrer"
-                className="ml-1 text-emerald-600 hover:text-emerald-700 p-1 rounded hover:bg-slate-200 transition-colors"
+              <button
+                onClick={handleOpenInNewTab}
+                className="p-1 text-slate-600 hover:text-emerald-700 rounded hover:bg-slate-200 transition-colors cursor-pointer"
                 title="Open in new window"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
-              </a>
+              </button>
+              <button
+                onClick={handleDownload}
+                className="p-1 text-slate-600 hover:text-emerald-700 rounded hover:bg-slate-200 transition-colors cursor-pointer"
+                title="Download file"
+              >
+                <Download className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
 
           {/* Secure Document Stream View (Image / PDF) */}
           <div className="flex-1 bg-slate-900/5 relative flex items-center justify-center overflow-auto p-2">
-            {(() => {
-              const mime = (document?.mimeType || '').toLowerCase();
-              const name = (document?.originalName || '').toLowerCase();
-              const isImage = mime.startsWith('image/') || /\.(png|jpe?g|webp|bmp|gif)$/i.test(name);
-              const previewUrl = `/api/documents/${id}/preview${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+            {loadingBlob && (
+              <div className="flex flex-col items-center justify-center gap-2 text-slate-400 py-12">
+                <RefreshCw className="w-6 h-6 text-emerald-600 animate-spin" />
+                <p className="text-xs font-medium text-slate-600">Loading document preview...</p>
+              </div>
+            )}
 
-              if (isImage) {
-                return (
-                  <div className="relative w-full h-full flex flex-col items-center justify-center group">
-                    <img
-                      src={previewUrl}
-                      alt={document?.originalName || 'Medical Document'}
-                      className="max-w-full max-h-full object-contain rounded shadow-sm border border-slate-200 cursor-pointer"
-                      onClick={() => setIsPreviewOpen(true)}
-                      title="Click to view full preview"
-                    />
-                    <div className="absolute bottom-3 bg-black/60 text-white text-[11px] px-3 py-1 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                      Click image or maximize for zoom & rotate
-                    </div>
-                  </div>
-                );
-              }
+            {!loadingBlob && blobError && (
+              <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-sm border border-rose-200 text-center space-y-3 m-4">
+                <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <h4 className="font-bold text-slate-800 text-xs">Unable to Display Preview</h4>
+                <p className="text-[11px] text-slate-500 leading-relaxed">{blobError}</p>
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  <button
+                    onClick={fetchDocumentBlob}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    Retry
+                  </button>
+                  <button
+                    onClick={handleDownload}
+                    className="px-3 py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <Download className="w-3 h-3" />
+                    Download
+                  </button>
+                </div>
+              </div>
+            )}
 
-              return (
-                <iframe
-                  src={`${previewUrl}#page=${activePage}`}
-                  title="Original Medical Document"
-                  className="w-full h-full border-none"
-                />
-              );
-            })()}
+            {!loadingBlob && !blobError && blobUrl && isImage && (
+              <div className="relative w-full h-full flex flex-col items-center justify-center group overflow-auto p-2 select-none">
+                <div
+                  style={{
+                    transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                    transition: 'transform 0.15s ease-out',
+                  }}
+                  className="origin-center max-w-full max-h-full flex items-center justify-center"
+                >
+                  <img
+                    src={blobUrl}
+                    alt={document?.originalName || 'Medical Document'}
+                    className="max-w-full max-h-[640px] object-contain rounded shadow-sm border border-slate-200 cursor-pointer bg-white"
+                    onClick={() => setIsPreviewOpen(true)}
+                    title="Click to view full preview"
+                  />
+                </div>
+                <div className="absolute bottom-3 bg-black/60 text-white text-[11px] px-3 py-1 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  Click image or maximize for zoom & rotate
+                </div>
+              </div>
+            )}
+
+            {!loadingBlob && !blobError && blobUrl && !isImage && (
+              <iframe
+                src={`${blobUrl}#page=${activePage}`}
+                title={document?.originalName || 'Medical Document'}
+                className="w-full h-full border-none rounded bg-white"
+              />
+            )}
           </div>
         </div>
 

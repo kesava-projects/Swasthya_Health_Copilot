@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-function resolveApiBaseUrl(): string {
+export function resolveApiBaseUrl(): string {
   const envUrl = (import.meta.env.VITE_API_BASE_URL || '').trim();
   if (!envUrl) {
     return '/api';
